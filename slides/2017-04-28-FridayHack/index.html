@@ -1,0 +1,286 @@
+<!doctype html>
+<html>
+  <head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Sample</title>
+
+		<link rel="stylesheet" href="../../reveal.js/css/reveal.css">
+		<link rel="stylesheet" href="../../css/theme/hhu/hhu.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="../../reveal.js/lib/css/zenburn.css">
+
+
+		<!-- Printing and PDF exports -->
+		<script>
+		 var link = document.createElement( 'link' );
+		 link.rel = 'stylesheet';
+		 link.type = 'text/css';
+		 link.href = window.location.search.match( /print-pdf/gi ) ? '../../reveal.js/css/print/pdf.css' : '../../reveal.js/css/print/paper.css';
+		 document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+
+      <div id="logo"><object data="../../css/theme/hhu/img/unilogo.svg" type="image/svg+xml"></object></div>
+
+			<div class="slides">
+        <section data-state="footer">
+          <div id="title">
+            <h3>Friday Hack: Hypothesis</h3>
+            <hr/>
+            <h5>Or: Why your manual tests suck</h5>
+            <h5>
+              <small>Alexander Schneider<br/>2017/04/27</small></h5>
+          </div>
+        </section>
+
+        <!--
+             hhublau: #176fc1
+             hhurot: #be0a26
+             hhugruen: #97bf0d
+             hhugrau: #d9dadb
+           -->
+
+        <!-- Content -->
+        <section>
+          <h3>Disclaimer</h3>
+          <p>
+            I am not an expert with Hypothesis. 
+          </p>
+          <p>Talk Based on presentation by @alexwlchan</p>
+        </section>
+
+       <section>
+          <h3>How we test</h3>
+          <ul>
+            <li>Think of example input</li>
+            <li>Think of corresponding output</li>
+            <li>Write it down as a test</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Example: Sort list of integers</h3>
+          <pre><code>
+def test_sort_string(sort_fn):
+  assert sort_fn([1, 2, 3, 4]) == [1, 2 ,3 ,4]
+  assert sort_fn([]) == []
+  assert sort_fn([4, 3, -1]) == [-1, 3, 4]
+  assert sort_fn([42]) == [42]
+  assert sort_fn([-5, 4, 2]) == [-5, 2, 4]
+          </code></pre>
+        </section>
+
+       <section>
+          <h3>SO TEDIOUS!</h3>
+          <ul>
+            <li>Needs lots of brainpower</li>
+            <li>Incomplete</li>
+            <li>Error-Prone</li>
+            <li>Hard to maintain</li>
+          </ul>
+        </section>
+
+       <section>
+          <h3>Illustration: Manual tests</h3>
+          <img src="test_illustration.png" />
+        </section>
+
+       <section>
+          <h3>Solution: Property based testing</h3>
+          <ul>
+            <li>Define Input</li>
+            <li>Reason about Output Properties</li>
+            <li>Run the tests often</li>
+            <li>Look for counterexamples</li>
+          </ul>
+        </section>
+
+       <section>
+          <h3>Hans has an objection</h3>
+          <p>"But Alex, that is just the same as writing a lot of tests by hand, there is not much additional benefit."</p>
+        </section>
+
+        <section>
+          <h3>Wrong, Hans!</h3>
+          <ul>
+            <li>Our Input-Space is potentially Infinite</li>
+            <li>Output has to be described rather then exactly stated</li>
+            <li>Only a little brainpower is needed</li>
+          </ul>
+        </section>
+
+       <section>
+          <h3>How does a sorted list look like?</h3>
+          <ul>
+            <li>Its a list</li>
+            <li>Exactly the same items are present as before sorting</li>
+            <li>For every pair of adjacent items the pair is sorted</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>In Code</h3>
+          <pre><code>
+from collections import Counter
+
+def test_sorting_list_property(sort_fn, numbers):
+  result = sort_fn(numbers)
+  assert isinstance(list)
+  assert Counter(result) == Counter(numbers)
+  assert all(x <= y for x, y in zip(result, result[1:]))
+          </code></pre>
+        </section>
+
+       <section>
+          <h3>How to get the numbers?</h3>
+          <ul>
+            <li>Hypothesis!</li>
+            <li>Inspired by QuickCheck</li>
+            <li>Integrates with python test runners</li>
+            <li>http://hypothesis.works</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Enter Hypothesis</h3>
+          <pre><code>
+from collections import Counter
+from hypothesis import given, strategies as st
+
+@given(st.lists(st.integers()))
+def test_sorting_list_property(numbers):
+  result = sorted(numbers)
+  assert isinstance(list)
+  assert Counter(result) == Counter(numbers)
+  assert all(x <= y for x, y in zip(result, result[1:]))
+          </code></pre>
+        </section>
+
+       <section>
+          <h3>What are strategies?</h3>
+          <ul>
+            <li>Rules for finding example data</li>
+            <li>Can Shrink themselves to find smalles possible error input</li>
+            <li>Can be composed</li>
+            <li>Work for more complicated examples</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Composed Strategy</h3>
+          <pre><code>
+from hypothesis import strategies as st
+from university import Student
+
+def student_strategy():
+  return st.builds(
+      Student,
+      name=st.text(),
+      lectures=st.lists(st.text()),
+      average_points_per_semester=st.floats())
+          </code></pre>
+        </section> 
+
+        <section>
+          <h3>Output of Strategy</h3>
+          <pre><code>
+print(student_strategy().example())
+
+> Student(name='klS#+D\U000da4ac',
+          lectures=['', 'a0ß2,,', '\n.ÖÖ\U09a'],
+          average_points_per_semester=-0.23409877)
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Make it Pretty</h3>
+          <pre><code>
+from hypothesis import strategies as st
+from university import Student
+
+def student_strategy():
+  return st.builds(
+      Student,
+      name=st.text(min_size=2, alphabet=string.ascii_letters),
+      lectures=st.lists(st.sampled_from(
+            ('Rechnernetze', 'Datenbanken', 'Netsec', 'NAND'))),
+      average_points_per_semester=st.floats(min_value=0.0, 
+                                            max_value=180))
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Oooh Pretty!</h3>
+          <pre><code>
+print(student_strategy().example())
+
+> Student(name='aölkKLfuIAO',
+          lectures=['NAND', 'Datenbanken', 'Netsec'],
+          average_points_per_semester=12.234077)
+          </code></pre>
+        </section>
+
+       <section>
+          <h3>Shrinking</h3>
+          <ul>
+            <li>Hypothesis encounters failing test</li>
+            <li>Hypothesis tries to shrink the failing data as much as possible</li>
+          </ul>
+        </section>   
+
+        <section>
+          <h3>Shrinking Example</h3>
+        </section>
+
+        <section>
+          <h3>What about rare bugs?</h3>
+          <ul>
+            <li>What if the 200 tests dont include the bug?</li>
+            <li>Hypothesis remembers bugs!</li>
+            <li>When you fix your code and run again, Hypothesis tries the failing example first</li>
+          </ul>
+        </section>       
+
+        <section>
+          <h3>More nice things</h3>
+          <ul>
+            <li>Statefull testing</li>
+            <li>Fuzzing</li>
+            <li>Many Plugins (Django testing!)</li>
+          </ul>
+        </section>     
+
+        <section>
+          <h3>Thanks for your time!</h3>
+          <p>Questions?</p>
+        </section>  
+		  </div>
+
+		  <script src="../../reveal.js/lib/js/head.min.js"></script>
+		  <script src="../../reveal.js/js/reveal.js"></script>
+
+		  <script>
+		   // More info https://github.com/hakimel/reveal.js#configuration
+		   Reveal.initialize({
+         controls: false,
+			   history: true,
+         center: true,
+         //       slideNumber: true,
+         transition: 'fade', // none/fade/slide/convex/concave/zoom
+
+			   // More info https://github.com/hakimel/reveal.js#dependencies
+			   dependencies: [
+				   /* { src: 'plugin/markdown/marked.js' },
+				      { src: 'plugin/markdown/markdown.js' },*/
+           //				 { src: '../../plugin/notes/notes.js', async: true },
+           { src: '../../reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+			   ]
+		   });
+		  </script>
+	</body>
+</html>
